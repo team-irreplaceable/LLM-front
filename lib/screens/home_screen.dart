@@ -10,7 +10,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _selectedPublisher;
-  int _selectedIndex = 0;
 
   // 임시 언론사 목록
   final List<String> _publishers = [
@@ -21,12 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
     '한겨레',
     '경향신문',
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   void dispose() {
@@ -143,16 +136,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.search), label: '검색'),
-          NavigationDestination(icon: Icon(Icons.chat), label: '채팅'),
-          NavigationDestination(icon: Icon(Icons.summarize), label: '요약'),
-          NavigationDestination(icon: Icon(Icons.settings), label: '설정'),
-        ],
       ),
     );
   }

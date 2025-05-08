@@ -3,6 +3,9 @@ import '../services/search_service.dart';
 import '../services/keyword_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:html_unescape/html_unescape.dart';
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' as html_parser;
+import 'package:url_launcher/url_launcher.dart';
 
 class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
@@ -17,6 +20,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   Map<String, dynamic> _summaries = {};
   bool _isLoading = true;
   final HtmlUnescape _unescape = HtmlUnescape();
+  final Map<String, String?> _thumbnailCache = {};
 
   @override
   void initState() {
@@ -37,11 +41,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
 
     try {
       final keywords = await _keywordService.getSelectedKeywords();
-      final summaries = <String, dynamic>{};
+      final summaryResponse =
+          await _searchService.getMultipleKeywordSummaries(keywords);
 
-      for (final keyword in keywords) {
-        final summary = await _searchService.getKeywordSummary(keyword);
-        summaries[keyword] = summary;
+      // 응답 구조: { results: [ {keyword: ..., articles: [...]}, ... ] }
+      final summaries = <String, dynamic>{};
+      for (final item in summaryResponse['results']) {
+        summaries[item['keyword']] = item;
       }
 
       setState(() {
@@ -57,6 +63,45 @@ class _SummaryScreenState extends State<SummaryScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<String?> fetchOgImage(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final document = html_parser.parse(response.body);
+        final metaTags = document.getElementsByTagName('meta');
+        for (final e in metaTags) {
+          if (e.attributes['property'] == 'og:image') {
+            return e.attributes['content'];
+          }
+        }
+      }
+    } catch (e) {
+      // ignore error
+    }
+    return null;
+  }
+
+  Future<void> _loadThumbnails(List results) async {
+    for (final result in results) {
+      final url = result['url'];
+      if (!_thumbnailCache.containsKey(url)) {
+        final thumb = await fetchOgImage(url);
+        if (mounted) {
+          setState(() {
+            _thumbnailCache[url] = thumb;
+          });
+        }
+      }
+    }
+  }
+
+  void _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -83,7 +128,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
         itemBuilder: (context, index) {
           final keyword = _summaries.keys.elementAt(index);
           final summary = _summaries[keyword];
-          final results = summary['results'] as List;
+          final results = summary['articles'] as List;
+
+          _loadThumbnails(results);
 
           return Card(
             elevation: 8,
@@ -117,7 +164,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                       color: Theme.of(context)
                           .colorScheme
                           .primary
-                          .withOpacity(0.2)),
+                          .withValues(alpha: 0.2)),
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -126,15 +173,29 @@ class _SummaryScreenState extends State<SummaryScreen> {
                         color: Theme.of(context)
                             .colorScheme
                             .primary
-                            .withOpacity(0.1)),
+                            .withValues(alpha: 0.1)),
                     itemBuilder: (context, resultIndex) {
                       final result = results[resultIndex];
+                      final url = result['url'];
+                      final thumbnail = _thumbnailCache[url];
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(
                             vertical: 8, horizontal: 0),
-                        leading: Icon(Icons.article,
-                            color: Theme.of(context).colorScheme.secondary,
-                            size: 28),
+                        leading: thumbnail != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  thumbnail,
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.broken_image),
+                                ),
+                              )
+                            : Icon(Icons.article,
+                                color: Theme.of(context).colorScheme.secondary,
+                                size: 28),
                         title: Text(
                           _unescape.convert(result['title']),
                           style: const TextStyle(
@@ -157,15 +218,19 @@ class _SummaryScreenState extends State<SummaryScreen> {
                                         Theme.of(context).colorScheme.primary),
                                 const SizedBox(width: 4),
                                 Flexible(
-                                  child: Text(
-                                    result['url'],
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      fontSize: 12,
-                                      decoration: TextDecoration.underline,
+                                  child: GestureDetector(
+                                    onTap: () => _launchUrl(result['url']),
+                                    child: Text(
+                                      result['url'],
+                                      style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        fontSize: 12,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],

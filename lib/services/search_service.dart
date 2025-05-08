@@ -14,7 +14,7 @@ class SearchService {
     };
 
     final uri =
-        Uri.parse('$_baseUrl/search').replace(queryParameters: queryParams);
+        Uri.parse('$_baseUrl/chat').replace(queryParameters: queryParams);
 
     try {
       final response = await http.get(uri);
@@ -61,7 +61,7 @@ class SearchService {
             'Failed to get keyword summaries: \\${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Failed to connect to server: \\${e}');
+      throw Exception('Failed to connect to server: \\$e');
     }
   }
 }

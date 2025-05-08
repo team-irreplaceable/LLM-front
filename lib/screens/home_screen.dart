@@ -30,14 +30,15 @@ class _HomeScreenState extends State<HomeScreen>
   List<ChatMessage> _messages = [];
   final ScrollController _scrollController = ScrollController();
 
-  // 임시 언론사 목록
+  // 언론사 목록 (29개)
   final List<String> _publishers = [
     '전체',
-    '조선일보',
-    '중앙일보',
-    '동아일보',
-    '한겨레',
-    '경향신문',
+    // 가나다/알파벳 순 정렬
+    'BROTER', 'Korea JoongAng Daily', 'MBN 뉴스', 'YTN', '기독교일보', '경향신문',
+    '노컷뉴스', '뉴시스', '디지털 데일리', '디지털타임스', '머니투데이', '문화일보', '세계일보',
+    '서울경제', '서울신문', '스포츠동아', '스포츠서울', '스포츠조선', '연합뉴스', '연합뉴스TV',
+    '이데일리', '전자신문', '조선일보', '중앙일보', '파이넨셜뉴스', '한겨레', '한국경제신문',
+    '헤럴드경제', '뉴스1'
   ];
 
   Map<String, String?> _thumbnailCache = {};
@@ -170,30 +171,50 @@ class _HomeScreenState extends State<HomeScreen>
                 ],
               ),
               const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedPublisher,
-                    hint: const Text('언론사 선택'),
-                    isExpanded: true,
-                    icon: const Icon(Icons.arrow_drop_down),
-                    items: _publishers.map((String publisher) {
-                      return DropdownMenuItem<String>(
-                        value: publisher,
-                        child: Text(publisher),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedPublisher = newValue;
-                      });
-                    },
+              GestureDetector(
+                onTap: () async {
+                  final selected = await showDialog<String>(
+                    context: context,
+                    builder: (context) => _PublisherSelectDialog(
+                      publishers: _publishers,
+                      selected: _selectedPublisher,
+                    ),
+                  );
+                  if (selected != null) {
+                    setState(() {
+                      _selectedPublisher = selected;
+                    });
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _selectedPublisher ?? '언론사 선택',
+                        style: TextStyle(
+                          color: _selectedPublisher == null
+                              ? Theme.of(context).colorScheme.onSurfaceVariant
+                              : Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
                   ),
                 ),
               ),
@@ -366,7 +387,8 @@ class _HomeScreenState extends State<HomeScreen>
           final url =
               RegExp(r'<a href=\"(.*?)\"').firstMatch(urlLine)?.group(1) ??
                   urlLine.trim();
-          refs.add({'title': title, 'summary': summary, 'url': url});
+          final cleanUrl = url.replaceAll(RegExp(r'<[^>]*>'), '');
+          refs.add({'title': title, 'summary': summary, 'url': cleanUrl});
         }
       }
       // 썸네일 비동기 로딩
@@ -630,6 +652,66 @@ class _ChatHistoryScreenState extends State<ChatHistoryScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _PublisherSelectDialog extends StatefulWidget {
+  final List<String> publishers;
+  final String? selected;
+  const _PublisherSelectDialog({required this.publishers, this.selected});
+
+  @override
+  State<_PublisherSelectDialog> createState() => _PublisherSelectDialogState();
+}
+
+class _PublisherSelectDialogState extends State<_PublisherSelectDialog> {
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.publishers
+        .where((p) => p.toLowerCase().contains(_search.toLowerCase()))
+        .toList();
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: SizedBox(
+        width: 350,
+        height: 500,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: '언론사 검색',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide.none),
+                  filled: true,
+                ),
+                onChanged: (v) => setState(() => _search = v),
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                itemCount: filtered.length,
+                separatorBuilder: (context, idx) => const Divider(height: 1),
+                itemBuilder: (context, idx) {
+                  final pub = filtered[idx];
+                  return ListTile(
+                    title: Text(pub),
+                    selected: pub == widget.selected,
+                    onTap: () => Navigator.pop(context, pub),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

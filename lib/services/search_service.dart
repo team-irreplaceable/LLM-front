@@ -10,7 +10,7 @@ class SearchService {
   }) async {
     final Map<String, String> queryParams = {
       'query': query,
-      if (publisher != null && publisher != '전체') 'publisher': publisher,
+      if (publisher != null && publisher != '전체') 'journal': publisher,
     };
 
     final uri =

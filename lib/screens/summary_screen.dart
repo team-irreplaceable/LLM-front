@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/search_service.dart';
 import '../services/keyword_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:html_unescape/html_unescape.dart';
 
 class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
@@ -15,6 +16,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
   late KeywordService _keywordService;
   Map<String, dynamic> _summaries = {};
   bool _isLoading = true;
+  final HtmlUnescape _unescape = HtmlUnescape();
 
   @override
   void initState() {
@@ -76,7 +78,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
         ],
       ),
       body: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         itemCount: _summaries.length,
         itemBuilder: (context, index) {
           final keyword = _summaries.keys.elementAt(index);
@@ -84,55 +86,102 @@ class _SummaryScreenState extends State<SummaryScreen> {
           final results = summary['results'] as List;
 
           return Card(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    keyword,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const Divider(),
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: results.length,
-                  itemBuilder: (context, resultIndex) {
-                    final result = results[resultIndex];
-                    return ListTile(
-                      title: Text(
-                        result['title'],
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          Text(result['summary']),
-                          const SizedBox(height: 8),
-                          Text(
-                            result['url'],
-                            style: TextStyle(
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            margin: const EdgeInsets.only(bottom: 24),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.label_important,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 28),
+                      const SizedBox(width: 10),
+                      Text(
+                        keyword,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
-                              fontSize: 12,
                             ),
-                          ),
-                        ],
                       ),
-                      isThreeLine: true,
-                    );
-                  },
-                ),
-              ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Divider(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.2)),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: results.length,
+                    separatorBuilder: (context, idx) => Divider(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.1)),
+                    itemBuilder: (context, resultIndex) {
+                      final result = results[resultIndex];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 0),
+                        leading: Icon(Icons.article,
+                            color: Theme.of(context).colorScheme.secondary,
+                            size: 28),
+                        title: Text(
+                          _unescape.convert(result['title']),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 6),
+                            Text(
+                              _unescape.convert(result['summary']),
+                              style: const TextStyle(fontSize: 14, height: 1.5),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.link,
+                                    size: 14,
+                                    color:
+                                        Theme.of(context).colorScheme.primary),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    result['url'],
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontSize: 12,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        isThreeLine: true,
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           );
         },
       ),
     );
   }
-} 
+}

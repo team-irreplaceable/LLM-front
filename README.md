@@ -32,3 +32,8 @@ FastAPI + LangChain 기반 뉴스 요약 시스템의 **Flutter 클라이언트*
 4. **실행**
    ```flutter run```
 
+## UX 설계
+![image](https://github.com/user-attachments/assets/4dec54d4-c1b5-460b-a987-2450ff3ded7d)
+
+![image](https://github.com/user-attachments/assets/235f5448-a2fd-49a6-8fc8-2868f37e582b)
+
